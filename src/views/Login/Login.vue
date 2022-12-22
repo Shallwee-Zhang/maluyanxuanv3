@@ -28,7 +28,7 @@
         <!-- 文本提示 -->
         <div style="margin:16px;">
           <p class="link-register" @click="isTitle = !isTitle">{{ isTitle ? '立即注册' : '已有账号，立即登录' }}</p>
-          <van-button round block type="primary">{{ isTitle ? '登录' : '注册' }}</van-button>
+          <van-button round block type="primary" native-type="submit">{{ isTitle ? '登录' : '注册' }}</van-button>
         </div>
       </van-form>
     </div>
@@ -46,7 +46,21 @@ let userInfo = reactive({
 });
 let route = useRoute()
 // 点击提交
-let onSubmit = () => { }
+let onSubmit = () => {
+  console.log(1123);
+  if (!isTitle.value) {
+    // console.log(456);
+
+    axios.post('http://backend-api-01.newbee.ltd/api/v1/user/register', {
+      loginName: username.value,
+      password: password.value,
+    }).then(res => {
+      console.log(res);
+    })
+  }
+ }
+
+
 
 // 点击返回
 let onClickLeft = () => {

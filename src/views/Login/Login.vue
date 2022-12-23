@@ -2,7 +2,7 @@
   <div class="login">
     <!-- 顶部导航栏 -->
     <header>
-      <van-nav-bar :title="isTitle ? '登录' : '注册'" left-arrow @click-left="onClickLeft">
+      <van-nav-bar :title="headerTitle" left-arrow @click-left="onClickLeft">
         <template #right>
           <van-icon name="ellipsis" size="18" />
         </template>
@@ -17,17 +17,19 @@
           :rules="[{ required: true, message: '请填写手机号' }]" />
         <van-field v-model="password" type="password" name="密码" label="密码" placeholder="密码"
           :rules="[{ required: true, message: '请填写密码' }]" />
+
         <!-- 验证码 -->
         <div style="display:flex;width: 100%;margin-top: 10px;">
           <div class="identify">验证码</div>
           <input type="text" placeholder="验证码" v-model="identifyVal">
           <div class="code" @click="refreshCode" style="width:112px">
-            <Identify></Identify>
+            <Identify :identifyCode="identifyCode"></Identify>
           </div>
         </div>
+
         <!-- 文本提示 -->
         <div style="margin:16px;">
-          <p class="link-register" @click="isTitle = !isTitle">{{ isTitle ? '立即注册' : '已有账号，立即登录' }}</p>
+          <p class="link-register" @click="linkRegisterBtn">{{ isTitle ? '立即注册' : '已有账号，立即登录' }}</p>
           <van-button round block type="primary" native-type="submit">{{ isTitle ? '登录' : '注册' }}</van-button>
         </div>
       </van-form>
@@ -36,37 +38,136 @@
 </template>
 
 <script setup>
-import { ref, reactive, toRefs } from "vue"
-import {useRoute} from 'vue-router'
+import { ref, reactive, toRefs, onMounted } from "vue"
+import { useRoute, useRouter } from 'vue-router'
 import Identify from "../../components/Identify.vue"
+import { register, login } from '@/api/index.js'
+import { showNotify } from "vant"
+
 let userInfo = reactive({
-  username: "17001100999",
-  password: "123456",
+  username: "",//17001100999
+  password: "",//123456
   isTitle: true, // 控制是登录还是注册 
 });
+let { username, password, isTitle } = toRefs(userInfo);
+
+let identifyVal = ref('')  //用户输入的验证码
+let headerTitle = ref('登录')
+
 let route = useRoute()
+let router = useRouter()
+
+
+
+
+// 图形验证码
+let identifyCodes = "1234567890"
+let identifyCode = ref('3212')
+
+// 随机数
+const randomNum = (min, max) => {
+  return Math.floor(Math.random() * (max - min) + min)
+}
+
+const makeCode = (o, l) => {
+  for (let i = 0; i < l; i++) {
+    identifyCode.value += o[
+      randomNum(0, o.length)
+    ];
+    // 拼接生成的随机数
+  }
+}
+
+// 刷新验证码
+const refreshCode = () => {
+  identifyCode.value = "";
+  makeCode(identifyCodes, 4);
+}
+
+// 钩子
+onMounted(() => {
+  identifyCode.value = "";
+  makeCode(identifyCodes, 4);
+})
+
+
+
+
+
+
+
+
 // 点击提交
 let onSubmit = () => {
-  console.log(1123);
-  if (!isTitle.value) {
-    // console.log(456);
+  // 判断验证码输入是否正确
+  if (identifyCode.value == identifyVal.value) {
+    if (isTitle.value) {
+      // console.log('登录');
+      login(username.value, password.value).then(res => {
+        if (res.resultCode == 200) {
+          localStorage.setItem('mlyxToken',JSON.stringify(res.data))
+          showNotify({
+            type: 'success',
+            message: '登录成功！',
+            duration: 1000,
+          })
+          setTimeout(() => {
+            router.replace('/home')
+          },1000)
+        }
+      })
+    } else {
+      // console.log('注册');
+      register(username.value, password.value).then(res => {
+        if (res.resultCode == 200) {
+          showNotify({
+            type: "success",
+            message: res.message == 'SUCCESS' ? '注册成功' : res.message
+          })
 
-    axios.post('http://backend-api-01.newbee.ltd/api/v1/user/register', {
-      loginName: username.value,
-      password: password.value,
-    }).then(res => {
-      console.log(res);
-    })
+          let account = username.value
+          setTimeout(() => {
+            userInfo.isTitle = true
+            linkRegisterBtn()
+            username.value = account
+          }, 2000)
+        }
+      })
+
+    }
+  } else {
+    showNotify('验证码输入错误！请重新输入')
   }
- }
+
+  identifyVal.value = ''
+  refreshCode()
+}
 
 
 
 // 点击返回
 let onClickLeft = () => {
- }
+  router.replace('/home')
+}
 
-let { username, password, isTitle } = toRefs(userInfo);
+
+// 点击切换登录注册状态
+let linkRegisterBtn = () => {
+  isTitle = !isTitle;
+ 
+  if (isTitle) {
+    headerTitle.value = '登录'
+  } else {
+    headerTitle.value = '注册'
+  }
+  username.value = '';
+  password.value = '';
+  // 刷新验证码
+  identifyVal.value = ''
+  refreshCode()
+}
+
+
 </script>
 
 <style scoped lang="less">
@@ -91,7 +192,7 @@ let { username, password, isTitle } = toRefs(userInfo);
 
   .login-form {
     padding: 0 0.53333rem;
-
+    margin-top: 45px;
     .van-form {
       display: block;
 
